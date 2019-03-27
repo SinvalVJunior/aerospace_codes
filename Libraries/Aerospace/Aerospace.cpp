@@ -720,27 +720,3 @@ float Aerospace::GPS_f_speed_knots()
 const float Aerospace::GPS_INVALID_F_ANGLE = 1000.0;
 const float Aerospace::GPS_INVALID_F_ALTITUDE = 1000000.0;
 const float Aerospace::GPS_INVALID_F_SPEED = -1.0;
-
-
-//--------------------Barometro-----------
-/*
-float Aerospace::BMP_readTemperature(void)
-{
-  int32_t var1, var2;
-
-  int32_t adc_T = read24(BMP280_REGISTER_TEMPDATA);
-  adc_T >>= 4;
-
-  var1  = ((((adc_T>>3) - ((int32_t)_bmp280_calib.dig_T1 <<1))) *
-     ((int32_t)_bmp280_calib.dig_T2)) >> 11;
-
-  var2  = (((((adc_T>>4) - ((int32_t)_bmp280_calib.dig_T1)) *
-       ((adc_T>>4) - ((int32_t)_bmp280_calib.dig_T1))) >> 12) *
-     ((int32_t)_bmp280_calib.dig_T3)) >> 14;
-
-  t_fine = var1 + var2;
-
-  float T  = (t_fine * 5 + 128) >> 8;
-  return T/100;
-}
-*/
