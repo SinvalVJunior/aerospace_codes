@@ -74,19 +74,8 @@ class Aerospace
   float GPS_f_speed_kmph();
   float GPS_f_speed_knots();
   float GPS_f_speed_mps();
-  //-----------------------Barometro------------
-  /*
-    bool  begin(uint8_t addr = BMP280_ADDRESS);
-    float readTemperature(void);
-    float readPressure(void);
-    float readAltitude(float seaLevelhPa = 1013.25);
-*/
   private:
-//-----------------Barometro
-    /*
- uint32_t  read24(byte reg);
- */
-//-------------------------
+//------------Acelerometro-------------
     int _sleepPin;
     int _selfTestPin;
     int _zeroGPin;
