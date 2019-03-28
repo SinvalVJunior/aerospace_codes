@@ -89,7 +89,6 @@ class Aerospace
     float BME_getAltitude(float seaLevel);
 
 
-
   private:
 //------------Acelerometro-------------
     int _sleepPin;
@@ -190,11 +189,10 @@ class Aerospace
         int16_t   BME_readS16_LE(byte reg); // little endian
 
         uint8_t   _i2caddr;
-        int32_t   t_fine;
 
         int8_t _cs, _mosi, _miso, _sck;
 
-        bme280_calib_data _bme280_calib;
+        //bme280_calib_data _bme280_calib;
   
 };
 

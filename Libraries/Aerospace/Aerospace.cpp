@@ -231,7 +231,7 @@ float Aerospace::BME_getTemperature() {
               ((adc_T>>4) - ((int32_t)bme280_calib.dig_T1))) >> 12) *
             ((int32_t)bme280_calib.dig_T3)) >> 14;
 
-    t_fine = var1 + var2;
+    int32_t t_fine = var1 + var2;
 
     float T = (t_fine * 5 + 128) >> 8;
     return T/100;
@@ -240,7 +240,7 @@ float Aerospace::BME_getTemperature() {
 float Aerospace::BME_getPressure() {
     int64_t var1, var2, t_fine, p;
 
-    BME_getTemperature(); // must be done first to get t_fine
+    t_fine = (int64_t)BME_getTemperature(); // must be done first to get t_fine
 
     uint16_t bme280_calib.dig_P1 = BME_read16_LE(0x8E);
     int16_t bme280_calib.dig_P2 = BME_readS16_LE(0x90);
@@ -249,8 +249,9 @@ float Aerospace::BME_getPressure() {
     int16_t bme280_calib.dig_P5 = BME_readS16_LE(0x96);
     int16_t bme280_calib.dig_P6 = BME_readS16_LE(0x98);
     int16_t bme280_calib.dig_P7 = BME_readS16_LE(0x9A);
-    int16_t bme280_calib.dig_P8;
-    int16_t bme280_calib.dig_P9;
+    int16_t bme280_calib.dig_P9 = BME_readS16_LE(0x9C); 
+    int16_t bme280_calib.dig_P9 = BME_readS16_LE(0x9E);
+
 
     int32_t adc_P = BME_read24(0xF7);
     if (adc_P == 0x800000) // value in case pressure measurement was disabled
@@ -339,7 +340,7 @@ bool Aerospace::BME_init() {
     BME_write8(0xE0, 0xB6);
     delay(300);
 
-    uint8_t const rStatus = read8(0XF3);
+    uint8_t const rStatus = BME_read8(0XF3);
     while ((rStatus & (1 << 0)) != 0)
           delay(100);
 
@@ -350,12 +351,12 @@ bool Aerospace::BME_init() {
 }
 
 uint16_t Aerospace::BME_read16_LE(byte reg) {
-    uint16_t temp = read16(reg);
+    uint16_t temp = BME_read16(reg);
     return (temp >> 8) | (temp << 8);
 }
 
 int16_t Aerospace::BME_readS16_LE(byte reg) {
-    return (int16_t)read16_LE(reg);
+    return (int16_t)BME_read16_LE(reg);
 }
 
 uint8_t Aerospace::BME_spixfer(uint8_t x) {
