@@ -74,6 +74,22 @@ class Aerospace
   float GPS_f_speed_kmph();
   float GPS_f_speed_knots();
   float GPS_f_speed_mps();
+
+  //--------------------------BME-------------------
+
+    
+    bool BME_begin(void);
+    bool BME_init();
+
+
+    float BME_getTemperature(void);
+    float BME_getPressure(void);
+    float BME_getHumidity(void);
+        
+    float BME_getAltitude(float seaLevel);
+
+
+
   private:
 //------------Acelerometro-------------
     int _sleepPin;
@@ -157,6 +173,28 @@ class Aerospace
 #endif
   int GPS_from_hex(char a);
   bool GPS_term_complete();
+
+
+  //--------------------------BME-------------------
+        TwoWire *_wire;
+        
+        
+        uint8_t spixfer(uint8_t x);
+
+        void      BME_write8(byte reg, byte value);
+        uint8_t   BME_read8(byte reg);
+        uint16_t  BME_read16(byte reg);
+        uint32_t  BME_read24(byte reg);
+        int16_t   BME_readS16(byte reg);
+        uint16_t  BME_read16_LE(byte reg); // little endian
+        int16_t   BME_readS16_LE(byte reg); // little endian
+
+        uint8_t   _i2caddr;
+        int32_t   t_fine;
+
+        int8_t _cs, _mosi, _miso, _sck;
+
+        bme280_calib_data _bme280_calib;
   
 };
 

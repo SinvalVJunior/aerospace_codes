@@ -35,6 +35,7 @@ Aerospace::Aerospace()
   ,  _failed_checksum(0)
 #endif
 {
+
   //Acelerometro
     _sleepPin=5;
     _selfTestPin=7;
@@ -208,6 +209,273 @@ void Aerospace::accelero_calibrate()
     Serial.print("\nDONE");
   }
 }
+
+//--------------------BME280--------------------//
+
+float Aerospace::BME_getTemperature() {
+    int32_t var1, var2, t_fine;
+
+    uint16_t bme280_calib.dig_T1 = BME_read16_LE(0x88);
+    int16_t bme280_calib.dig_T2 = BME_readS16_LE(0x8A);
+    int16_t bme280_calib.dig_T3 = BME_readS16_LE(0x8C);
+
+    int32_t adc_T = BME_read24(0xFA);
+    if (adc_T == 0x800000)
+        return NAN;
+    adc_T >>= 4;
+
+    var1 = ((((adc_T>>3) - ((int32_t)bme280_calib.dig_T1 <<1))) *
+            ((int32_t)bme280_calib.dig_T2)) >> 11;
+
+    var2 = (((((adc_T>>4) - ((int32_t)bme280_calib.dig_T1)) *
+              ((adc_T>>4) - ((int32_t)bme280_calib.dig_T1))) >> 12) *
+            ((int32_t)bme280_calib.dig_T3)) >> 14;
+
+    t_fine = var1 + var2;
+
+    float T = (t_fine * 5 + 128) >> 8;
+    return T/100;
+}
+
+float Aerospace::BME_getPressure() {
+    int64_t var1, var2, t_fine, p;
+
+    BME_getTemperature(); // must be done first to get t_fine
+
+    uint16_t bme280_calib.dig_P1 = BME_read16_LE(0x8E);
+    int16_t bme280_calib.dig_P2 = BME_readS16_LE(0x90);
+    int16_t bme280_calib.dig_P3 = BME_readS16_LE(0x92);
+    int16_t bme280_calib.dig_P4 = BME_readS16_LE(0x94);
+    int16_t bme280_calib.dig_P5 = BME_readS16_LE(0x96);
+    int16_t bme280_calib.dig_P6 = BME_readS16_LE(0x98);
+    int16_t bme280_calib.dig_P7 = BME_readS16_LE(0x9A);
+    int16_t bme280_calib.dig_P8;
+    int16_t bme280_calib.dig_P9;
+
+    int32_t adc_P = BME_read24(0xF7);
+    if (adc_P == 0x800000) // value in case pressure measurement was disabled
+        return NAN;
+    adc_P >>= 4;
+
+    var1 = ((int64_t)t_fine) - 128000;
+    var2 = var1 * var1 * (int64_t)bme280_calib.dig_P6;
+    var2 = var2 + ((var1*(int64_t)bme280_calib.dig_P5)<<17);
+    var2 = var2 + (((int64_t)bme280_calib.dig_P4)<<35);
+    var1 = ((var1 * var1 * (int64_t)bme280_calib.dig_P3)>>8) +
+           ((var1 * (int64_t)bme280_calib.dig_P2)<<12);
+    var1 = (((((int64_t)1)<<47)+var1))*((int64_t)bme280_calib.dig_P1)>>33;
+
+    if (var1 == 0) {
+        return 0; // avoid exception caused by division by zero
+    }
+    p = 1048576 - adc_P;
+    p = (((p<<31) - var2)*3125) / var1;
+    var1 = (((int64_t)bme280_calib.dig_P9) * (p>>13) * (p>>13)) >> 25;
+    var2 = (((int64_t)bme280_calib.dig_P8) * p) >> 19;
+
+    p = ((p + var1 + var2) >> 8) + (((int64_t)bme280_calib.dig_P7)<<4);
+    return (float)p/256;
+}
+
+
+float Aerospace::BME_getHumidity() {
+
+    uint8_t bme280_calib.dig_H1 = BME_read8(0xA1);
+    int16_t bme280_calib.dig_H2 = BME_readS16_LE(0xE1);
+    uint8_t bme280_calib.dig_H3 = BME_read8(0xE3);
+    int16_t bme280_calib.dig_H4 = (BME_read8(0xE4) << 4) | (BME_read8(0xE4+1) & 0xF);
+    int16_t bme280_calib.dig_H5 = (BME_read8(0xE5+1) << 4) | (BME_read8(0xE5) >> 4);
+    int8_t bme280_calib.dig_H6 = (int8_t)BME_read8(0xE7);
+
+    BME_getTemperature(); // must be done first to get t_fine
+
+    int32_t adc_H = BME_read16(0xFD);
+    if (adc_H == 0x8000) // value in case humidity measurement was disabled
+        return NAN;
+
+    int32_t v_x1_u32r;
+
+    v_x1_u32r = (t_fine - ((int32_t)76800));
+
+    v_x1_u32r = (((((adc_H << 14) - (((int32_t)bme280_calib.dig_H4) << 20) -
+                    (((int32_t)bme280_calib.dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) *
+                 (((((((v_x1_u32r * ((int32_t)bme280_calib.dig_H6)) >> 10) *
+                      (((v_x1_u32r * ((int32_t)bme280_calib.dig_H3)) >> 11) + ((int32_t)32768))) >> 10) +
+                    ((int32_t)2097152)) * ((int32_t)bme280_calib.dig_H2) + 8192) >> 14));
+
+    v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
+                               ((int32_t)bme280_calib.dig_H1)) >> 4));
+
+    v_x1_u32r = (v_x1_u32r < 0) ? 0 : v_x1_u32r;
+    v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
+    float h = (v_x1_u32r>>12);
+    return  h / 1024.0;
+}
+
+bool Aerospace::BME_begin() {
+    _i2caddr = 0x77;
+    TwoWire * _wire = &Wire;
+    return init();
+}
+
+bool Aerospace::BME_init() {
+    if (_cs == -1) 
+        _wire -> BME_begin();
+    else {
+        digitalWrite(_cs, HIGH);
+        pinMode(_cs, OUTPUT);
+        if (_sck == -1)
+            SPI.begin();
+        else {
+            pinMode(_sck, OUTPUT);
+            pinMode(_mosi, OUTPUT);
+            pinMode(_miso, INPUT);
+        }
+    }
+
+    if (BME_read8(0xD0) != 0x60)
+        return false;
+
+    BME_write8(0xE0, 0xB6);
+    delay(300);
+
+    uint8_t const rStatus = read8(0XF3);
+    while ((rStatus & (1 << 0)) != 0)
+          delay(100);
+
+    BME_set_();
+    delay(100);
+
+    return true;
+}
+
+uint16_t Aerospace::BME_read16_LE(byte reg) {
+    uint16_t temp = read16(reg);
+    return (temp >> 8) | (temp << 8);
+}
+
+int16_t Aerospace::BME_readS16_LE(byte reg) {
+    return (int16_t)read16_LE(reg);
+}
+
+uint8_t Aerospace::BME_spixfer(uint8_t x) {
+    // hardware SPI
+    if (_sck == -1)
+        return SPI.transfer(x);
+
+    // software SPI
+    uint8_t reply = 0;
+    for (int i=7; i>=0; i--) {
+        reply <<= 1;
+        digitalWrite(_sck, LOW);
+        digitalWrite(_mosi, x & (1<<i));
+        digitalWrite(_sck, HIGH);
+        if (digitalRead(_miso))
+            reply |= 1;
+        }
+    return reply;
+}
+
+uint32_t Aerospace::BME_read24(byte reg) {
+    uint32_t value;
+
+    if (_cs == -1) {
+        _wire -> beginTransmission((uint8_t)_i2caddr);
+        _wire -> write((uint8_t)reg);
+        _wire -> endTransmission();
+        _wire -> requestFrom((uint8_t)_i2caddr, (byte)3);
+
+        value = _wire -> read();
+        value <<= 8;
+        value |= _wire -> read();
+        value <<= 8;
+        value |= _wire -> read();
+    } else {
+        if (_sck == -1)
+            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        digitalWrite(_cs, LOW);
+        BME_spixfer(reg | 0x80); // read, bit 7 high
+
+        value = BME_spixfer(0);
+        value <<= 8;
+        value |= BME_spixfer(0);
+        value <<= 8;
+        value |= BME_spixfer(0);
+
+        digitalWrite(_cs, HIGH);
+        if (_sck == -1)
+            SPI.endTransaction(); // release the SPI bus
+    }
+
+    return value;
+}
+
+uint8_t Aerospace::BME_read8(byte reg) {
+    uint8_t value;
+    
+    if (_cs == -1) {
+        _wire -> beginTransmission((uint8_t)_i2caddr);
+        _wire -> write((uint8_t)reg);
+        _wire -> endTransmission();
+        _wire -> requestFrom((uint8_t)_i2caddr, (byte)1);
+        value = _wire -> read();
+    } else {
+        if (_sck == -1)
+            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        digitalWrite(_cs, LOW);
+        BME_spixfer(reg | 0x80); // read, bit 7 high
+        value = BME_spixfer(0);
+        digitalWrite(_cs, HIGH);
+        if (_sck == -1)
+            SPI.endTransaction(); // release the SPI bus
+    }
+    return value;
+}
+
+uint16_t Aerospace::BME_read16(byte reg) {
+    uint16_t value;
+
+    if (_cs == -1) {
+        _wire -> beginTransmission((uint8_t)_i2caddr);
+        _wire -> write((uint8_t)reg);
+        _wire -> endTransmission();
+        _wire -> requestFrom((uint8_t)_i2caddr, (byte)2);
+        value = (_wire -> read() << 8) | _wire -> read();
+    } else {
+        if (_sck == -1)
+            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        digitalWrite(_cs, LOW);
+        BME_spixfer(reg | 0x80); // read, bit 7 high
+        value = (BME_spixfer(0) << 8) | BME_spixfer(0);
+        digitalWrite(_cs, HIGH);
+        if (_sck == -1)
+            SPI.endTransaction(); // release the SPI bus
+    }
+
+    return value;
+}
+
+void Aerospace::BME_write8(byte reg, byte value) {
+
+    if (_cs == -1) {
+        _wire -> beginTransmission((uint8_t)_i2caddr);
+        _wire -> write((uint8_t)reg);
+        _wire -> write((uint8_t)value);
+        _wire -> endTransmission();
+    } else {
+        if (_sck == -1)
+            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        digitalWrite(_cs, LOW);
+        BME_spixfer(reg & ~0x80); // write, bit 7 low
+        BME_spixfer(value);
+        digitalWrite(_cs, HIGH);
+    if (_sck == -1)
+        SPI.endTransaction(); // release the SPI bus
+    }
+}
+
+
+//---------------------------------------------//
 
 
 
