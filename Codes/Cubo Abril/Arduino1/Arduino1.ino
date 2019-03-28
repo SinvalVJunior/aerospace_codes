@@ -2,6 +2,10 @@
 #include <SoftwareSerial.h>
 #include "TimerOne.h"
 
+//-----------------------------------Barômetro---------------------------------
+#define PRESSAONIVELDOMAR_HPA (1013.25)
+unsigned long delayTime;
+
 SoftwareSerial serialGPS(10, 11); // RX, TX
 Aerospace aerospace;
 
@@ -11,9 +15,24 @@ void setup() {
     /*----------------------------------GPS----------------------------------*/
     serialGPS.begin(9600);
     Serial.println("Aguardando sinal dos satélites...");
+
+    //---------------------------------Barômetro------------------------------
+    Serial.println(F("Testando barometro..."));
+
+    bool BME_status;
+
+    //Verifica o sensor de barômetro
+    BME_status = aerospace.BME_begin();
+    if (!BME_status) {
+      Serial.println("Sensor de barômetro não encontrado, verifique a fiação!");
+    }
+
+    delayTime = 1000;
+    Serial.println();
 }
 
 void loop() {
+   //---------------------------------GPS---------------------------------------
   bool recebido = false;
   serialGPS.listen();
   
@@ -86,4 +105,24 @@ void loop() {
      Serial.println(velocidade, 2);  //Conversão de Nós para Km/h
     }
   }
+
+  //-------------------------Barômetro--------------------------------
+    Serial.print("Temperatura = ");
+    Serial.print(aerospace.BME_readTemperature());
+    Serial.println(" *C");
+
+    Serial.print("Pressão = ");
+    Serial.print(aerospace.BME_readPressure() / 100.0F);
+    Serial.println(" hPa");
+
+    Serial.print("Aprox. Altitude barômetro= ");
+    Serial.print(aerospace.BME_readAltitude(PRESSAONIVELDOMAR_HPA));
+    Serial.println(" m");
+
+    Serial.print("Humidade = ");
+    Serial.print(aerospace.BME_readHumidity());
+    Serial.println(" %");
+
+    Serial.println();
+    delay(delayTime);
 }
