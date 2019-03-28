@@ -1,23 +1,44 @@
 #include <Aerospace.h>
 #include <SoftwareSerial.h>
 #include "TimerOne.h"
+//-----GPRS-----
+#define pinBotaoCall 12
+String telefoneSMS;//Definir o numero
+ String msg;
+//--------------------
 
 SoftwareSerial serialGPS(10, 11); // RX, TX
+
+SoftwareSerial serialGSM(10, 11); // RX, TX
 Aerospace aerospace;
+
+
+void configuraGSM();
+void enviaSMS(String telefone, String mensagem);
 
 void setup() {
     Serial.begin(9600);
-
+    //------------------GPRS-----------------------------
+    serialGSM.begin(9600); 
+    pinMode(pinBotaoCall, INPUT_PULLUP);
+    Serial.println("Sketch Iniciado!");
+    configuraGSM(); //funcao para receber sms
     /*----------------------------------GPS----------------------------------*/
     serialGPS.begin(9600);
     Serial.println("Aguardando sinal dos satélites...");
+
+  //-------------------------Timer--------------------------------------
+  Timer1.initialize(500000); // Inicializa o Timer1 e configura para um período de 0,5 segundos //acell
+  Timer1.attachInterrupt(enviaSMS); // Configura a função callback() como a função para ser chamada a cada interrupção do Timer1
+
 }
 
 void loop() {
   bool recebido = false;
-  serialGPS.listen();
+  if(!serialGPS.available())
+          serialGPS.listen();
   
-  while (serialGPS.available()) {
+  else {
      char cIn = serialGPS.read();
      recebido = aerospace.GPS_encode(cIn);
      
@@ -81,9 +102,25 @@ void loop() {
      //velocidade
      float velocidade;
      velocidade = aerospace.GPS_f_speed_kmph();   //km/h
-
      Serial.print("Velocidade (km/h): ");
      Serial.println(velocidade, 2);  //Conversão de Nós para Km/h
+     msg="GPS funcionando\nLatitude:"+latitude/1000000;//mudar para 6 caracteres depois da virgula
+     msg=msg+"\nLongitude:"+longitude/1000000+//mudar para 6 caracteres depois da virgula
+                          "\nIdade da mensagem:"+idadeInfo+
+                          "\nAltitude"+altitudeGPS/100+
+                          "\nVelocidade"+velocidade;
+                           
+                          
     }
   }
+  
+}
+
+void configuraGSM() {
+   serialGSM.print("AT+CMGF=1\n;AT+CNMI=2,2,0,0,0\n;ATX4\n;AT+COLP=1\n"); 
+}
+void enviaSMS() {
+  serialGSM.print("AT+CMGS=\"" + telefoneSMS + "\"\n");
+  serialGSM.print(msg + "\n");
+  //serialGSM.print((char)26); 
 }
