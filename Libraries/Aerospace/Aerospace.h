@@ -5,6 +5,8 @@
 #include <Arduino.h>
 #else
 #include <WProgram.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
 #include <pins_arduino.h>
 #endif
 
@@ -57,6 +59,7 @@ class Aerospace
 	boolean DHT_read(bool force=false);
 	
     //---------------------------BME280---------------------------//
+	
 	bool BME_begin();
 	bool BME_init();
 	float BME_getTemperature();
@@ -100,6 +103,31 @@ class Aerospace
     int _average;
     boolean _sleep;
     boolean _sensi;
+	
+//------------BME280-------------//
+	
+	//constructors
+	uint16_t  BME_read16_LE(byte reg); // little endian
+	int16_t   BME_readS16_LE(byte reg); // little endian
+	uint32_t  BME_read24(byte reg);
+	uint8_t   BME_read8(byte reg);
+	uint16_t  BME_read16(byte reg);
+	void      BME_write8(byte reg, byte value);
+	bool      BME_isReadingCalibration() 
+	void      BME_setSampling(sensor_mode mode              = MODE_NORMAL,
+		     sensor_sampling tempSampling  = SAMPLING_X16,
+		     sensor_sampling pressSampling = SAMPLING_X16,
+		     sensor_sampling humSampling   = SAMPLING_X16,
+		     sensor_filter filter          = FILTER_OFF,
+		     standby_duration duration     = STANDBY_MS_0_5
+		     );
+
+	//globals
+	uint8_t   _i2c_addr;
+	TwoWire *_wire;
+	int8_t _cs, _mosi, _miso, _sck;
+	
+//-------------------------------//
 
     //DHT : EM ANDAMENTO
     //VERIFICAR : se estamos utilizando apenas essas variaveis
