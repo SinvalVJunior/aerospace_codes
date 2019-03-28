@@ -1,5 +1,3 @@
-
-
 #ifndef Aerospace_h
 #define Aerospace_h
 
@@ -40,41 +38,55 @@
 class Aerospace
 {
   public:
-    //---------------------------Acelerometro------------------------
-    Aerospace();
-    void accelero_begin();
-    int accelero_getXAccel();
-    int accelero_getYAccel();
-    int accelero_getZAccel();
-    void accelero_setOffSets(int xOffSet, int yOffSet, int zOffSet);
-    void accelero_calibrate();                             // only to be executed when Z-axis is oriented to the ground
-    int accelero_getOrientation();
+	
+    //---------------------------Acelerometro------------------------//
+	Aerospace();
+	void accelero_begin();
+	int accelero_getXAccel();
+	int accelero_getYAccel();
+	int accelero_getZAccel();
+	void accelero_setOffSets(int xOffSet, int yOffSet, int zOffSet);
+	void accelero_calibrate();                             // only to be executed when Z-axis is oriented to the ground
+	int accelero_getOrientation();
 
-    // DHT : EM ANDAMENTO
-    //VERIFICAR : se estamos usando apenas essas funcoes e os parâmetros delas 
+	// DHT : EM ANDAMENTO
+	//VERIFICAR : se estamos usando apenas essas funcoes e os parâmetros delas 
 
 	float DHT_readTemperature(bool S=false, bool force=false);
 	float DHT_readHumidity(bool force=false);
 	boolean DHT_read(bool force=false);
-	//----------------------GPS-----------------
-	enum {
-	    GPS_INVALID_AGE = 0xFFFFFFFF,      GPS_INVALID_ANGLE = 999999999, 
-	    GPS_INVALID_ALTITUDE = 999999999,  GPS_INVALID_DATE = 0,
-	    GPS_INVALID_TIME = 0xFFFFFFFF,		 GPS_INVALID_SPEED = 999999999, 
-	    GPS_INVALID_FIX_TIME = 0xFFFFFFFF, GPS_INVALID_SATELLITES = 0xFF,
-	    GPS_INVALID_HDOP = 0xFFFFFFFF
-	  };
-	static const float GPS_INVALID_F_ANGLE, GPS_INVALID_F_ALTITUDE, GPS_INVALID_F_SPEED;
 	
+    //---------------------------BME280---------------------------//
+	bool BME_begin();
+	bool BME_init();
+	float BME_getTemperature();
+	float BME_getPressure();
+	float BME_getHumidity();
+
+	
+    //----------------------GPS-----------------//
+	enum {
+		GPS_INVALID_AGE = 0xFFFFFFFF,      GPS_INVALID_ANGLE = 999999999, 
+		GPS_INVALID_ALTITUDE = 999999999,  GPS_INVALID_DATE = 0,
+		GPS_INVALID_TIME = 0xFFFFFFFF,		 GPS_INVALID_SPEED = 999999999, 
+		GPS_INVALID_FIX_TIME = 0xFFFFFFFF, GPS_INVALID_SATELLITES = 0xFF,
+		GPS_INVALID_HDOP = 0xFFFFFFFF
+	};
+	static const float GPS_INVALID_F_ANGLE, GPS_INVALID_F_ALTITUDE, GPS_INVALID_F_SPEED;
+
 	bool GPS_encode(char c);
 	void GPS_get_position(long *latitude, long *longitude, unsigned long *fix_age = 0);
 	void GPS_get_datetime(unsigned long *date, unsigned long *time, unsigned long *age = 0);
 	void GPS_crack_datetime(int *year, byte *month, byte *day,byte *hour, byte *minute, byte *second, byte *hundredths = 0, unsigned long *fix_age = 0);
-  float GPS_f_altitude();
-  float GPS_f_speed_kmph();
-  float GPS_f_speed_knots();
-  float GPS_f_speed_mps();
+	float GPS_f_altitude();
+	float GPS_f_speed_kmph();
+	float GPS_f_speed_knots();
+	float GPS_f_speed_mps();
+	
+	
+	
   private:
+	
 //------------Acelerometro-------------
     int _sleepPin;
     int _selfTestPin;
