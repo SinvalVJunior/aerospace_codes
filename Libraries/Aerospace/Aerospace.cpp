@@ -939,9 +939,9 @@ void Aerospace::BME_setSampling(sensor_mode       mode,
     
     // you must make sure to also set REGISTER_CONTROL after setting the
     // CONTROLHUMID register, otherwise the values won't be applied (see DS 5.4.3)
-    write8(BME280_REGISTER_CONTROLHUMID, _humReg.get());
-    write8(BME280_REGISTER_CONFIG, _configReg.get());
-    write8(BME280_REGISTER_CONTROL, _measReg.get());
+    BME_write8(BME280_REGISTER_CONTROLHUMID, _humReg.get());
+    BME_write8(BME280_REGISTER_CONFIG, _configReg.get());
+    BME_write8(BME280_REGISTER_CONTROL, _measReg.get());
 }
 
 /**************************************************************************/
