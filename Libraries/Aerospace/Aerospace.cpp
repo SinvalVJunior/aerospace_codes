@@ -215,21 +215,21 @@ void Aerospace::accelero_calibrate()
 float Aerospace::BME_getTemperature() {
     int32_t var1, var2, t_fine;
 
-    uint16_t bme280_calib.dig_T1 = BME_read16_LE(0x88);
-    int16_t bme280_calib.dig_T2 = BME_readS16_LE(0x8A);
-    int16_t bme280_calib.dig_T3 = BME_readS16_LE(0x8C);
+    uint16_t dig_T1 = BME_read16_LE(0x88);
+    int16_t dig_T2 = BME_readS16_LE(0x8A);
+    int16_t dig_T3 = BME_readS16_LE(0x8C);
 
     int32_t adc_T = BME_read24(0xFA);
     if (adc_T == 0x800000)
         return NAN;
     adc_T >>= 4;
 
-    var1 = ((((adc_T>>3) - ((int32_t)bme280_calib.dig_T1 <<1))) *
-            ((int32_t)bme280_calib.dig_T2)) >> 11;
+    var1 = ((((adc_T>>3) - ((int32_t)dig_T1 <<1))) *
+            ((int32_t)dig_T2)) >> 11;
 
-    var2 = (((((adc_T>>4) - ((int32_t)bme280_calib.dig_T1)) *
-              ((adc_T>>4) - ((int32_t)bme280_calib.dig_T1))) >> 12) *
-            ((int32_t)bme280_calib.dig_T3)) >> 14;
+    var2 = (((((adc_T>>4) - ((int32_t)dig_T1)) *
+              ((adc_T>>4) - ((int32_t)dig_T1))) >> 12) *
+            ((int32_t)dig_T3)) >> 14;
 
     int32_t t_fine = var1 + var2;
 
@@ -242,15 +242,15 @@ float Aerospace::BME_getPressure() {
 
     t_fine = (int64_t)BME_getTemperature(); // must be done first to get t_fine
 
-    uint16_t bme280_calib.dig_P1 = BME_read16_LE(0x8E);
-    int16_t bme280_calib.dig_P2 = BME_readS16_LE(0x90);
-    int16_t bme280_calib.dig_P3 = BME_readS16_LE(0x92);
-    int16_t bme280_calib.dig_P4 = BME_readS16_LE(0x94);
-    int16_t bme280_calib.dig_P5 = BME_readS16_LE(0x96);
-    int16_t bme280_calib.dig_P6 = BME_readS16_LE(0x98);
-    int16_t bme280_calib.dig_P7 = BME_readS16_LE(0x9A);
-    int16_t bme280_calib.dig_P9 = BME_readS16_LE(0x9C); 
-    int16_t bme280_calib.dig_P9 = BME_readS16_LE(0x9E);
+    uint16_t dig_P1 = BME_read16_LE(0x8E);
+    int16_t dig_P2 = BME_readS16_LE(0x90);
+    int16_t dig_P3 = BME_readS16_LE(0x92);
+    int16_t dig_P4 = BME_readS16_LE(0x94);
+    int16_t dig_P5 = BME_readS16_LE(0x96);
+    int16_t dig_P6 = BME_readS16_LE(0x98);
+    int16_t dig_P7 = BME_readS16_LE(0x9A);
+    int16_t dig_P9 = BME_readS16_LE(0x9C); 
+    int16_t dig_P9 = BME_readS16_LE(0x9E);
 
 
     int32_t adc_P = BME_read24(0xF7);
@@ -259,34 +259,33 @@ float Aerospace::BME_getPressure() {
     adc_P >>= 4;
 
     var1 = ((int64_t)t_fine) - 128000;
-    var2 = var1 * var1 * (int64_t)bme280_calib.dig_P6;
-    var2 = var2 + ((var1*(int64_t)bme280_calib.dig_P5)<<17);
-    var2 = var2 + (((int64_t)bme280_calib.dig_P4)<<35);
-    var1 = ((var1 * var1 * (int64_t)bme280_calib.dig_P3)>>8) +
-           ((var1 * (int64_t)bme280_calib.dig_P2)<<12);
-    var1 = (((((int64_t)1)<<47)+var1))*((int64_t)bme280_calib.dig_P1)>>33;
+    var2 = var1 * var1 * (int64_t)dig_P6;
+    var2 = var2 + ((var1*(int64_t)dig_P5)<<17);
+    var2 = var2 + (((int64_t)dig_P4)<<35);
+    var1 = ((var1 * var1 * (int64_t)dig_P3)>>8) +
+           ((var1 * (int64_t)dig_P2)<<12);
+    var1 = (((((int64_t)1)<<47)+var1))*((int64_t)dig_P1)>>33;
 
     if (var1 == 0) {
         return 0; // avoid exception caused by division by zero
     }
     p = 1048576 - adc_P;
     p = (((p<<31) - var2)*3125) / var1;
-    var1 = (((int64_t)bme280_calib.dig_P9) * (p>>13) * (p>>13)) >> 25;
-    var2 = (((int64_t)bme280_calib.dig_P8) * p) >> 19;
+    var1 = (((int64_t)dig_P9) * (p>>13) * (p>>13)) >> 25;
+    var2 = (((int64_t)dig_P8) * p) >> 19;
 
-    p = ((p + var1 + var2) >> 8) + (((int64_t)bme280_calib.dig_P7)<<4);
+    p = ((p + var1 + var2) >> 8) + (((int64_t)dig_P7)<<4);
     return (float)p/256;
 }
 
-
 float Aerospace::BME_getHumidity() {
 
-    uint8_t bme280_calib.dig_H1 = BME_read8(0xA1);
-    int16_t bme280_calib.dig_H2 = BME_readS16_LE(0xE1);
-    uint8_t bme280_calib.dig_H3 = BME_read8(0xE3);
-    int16_t bme280_calib.dig_H4 = (BME_read8(0xE4) << 4) | (BME_read8(0xE4+1) & 0xF);
-    int16_t bme280_calib.dig_H5 = (BME_read8(0xE5+1) << 4) | (BME_read8(0xE5) >> 4);
-    int8_t bme280_calib.dig_H6 = (int8_t)BME_read8(0xE7);
+    uint8_t dig_H1 = BME_read8(0xA1);
+    int16_t dig_H2 = BME_readS16_LE(0xE1);
+    uint8_t dig_H3 = BME_read8(0xE3);
+    int16_t dig_H4 = (BME_read8(0xE4) << 4) | (BME_read8(0xE4+1) & 0xF);
+    int16_t dig_H5 = (BME_read8(0xE5+1) << 4) | (BME_read8(0xE5) >> 4);
+    int8_t dig_H6 = (int8_t)BME_read8(0xE7);
 
     BME_getTemperature(); // must be done first to get t_fine
 
@@ -298,14 +297,14 @@ float Aerospace::BME_getHumidity() {
 
     v_x1_u32r = (t_fine - ((int32_t)76800));
 
-    v_x1_u32r = (((((adc_H << 14) - (((int32_t)bme280_calib.dig_H4) << 20) -
-                    (((int32_t)bme280_calib.dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) *
-                 (((((((v_x1_u32r * ((int32_t)bme280_calib.dig_H6)) >> 10) *
-                      (((v_x1_u32r * ((int32_t)bme280_calib.dig_H3)) >> 11) + ((int32_t)32768))) >> 10) +
-                    ((int32_t)2097152)) * ((int32_t)bme280_calib.dig_H2) + 8192) >> 14));
+    v_x1_u32r = (((((adc_H << 14) - (((int32_t)dig_H4) << 20) -
+                    (((int32_t)dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) *
+                 (((((((v_x1_u32r * ((int32_t)dig_H6)) >> 10) *
+                      (((v_x1_u32r * ((int32_t)dig_H3)) >> 11) + ((int32_t)32768))) >> 10) +
+                    ((int32_t)2097152)) * ((int32_t)dig_H2) + 8192) >> 14));
 
     v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
-                               ((int32_t)bme280_calib.dig_H1)) >> 4));
+                               ((int32_t)dig_H1)) >> 4));
 
     v_x1_u32r = (v_x1_u32r < 0) ? 0 : v_x1_u32r;
     v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
@@ -317,6 +316,25 @@ bool Aerospace::BME_begin() {
     _i2caddr = 0x77;
     TwoWire * _wire = &Wire;
     return init();
+}
+
+void Aerospace::BME_setSampling() {
+
+    _measReg.mode     = 0b11;
+    _measReg.osrs_t   = 0b101;
+    _measReg.osrs_p   = 0b101;
+        
+    
+    _humReg.osrs_h    = 0b101;
+    _configReg.filter = 0b000;
+    _configReg.t_sb   = 0b000;
+
+    
+    // you must make sure to also set REGISTER_CONTROL after setting the
+    // CONTROLHUMID register, otherwise the values won't be applied (see DS 5.4.3)
+    write8(0xF2, _humReg.get());
+    write8(0xF2, _configReg.get());
+    write8(0xF4, _measReg.get());
 }
 
 bool Aerospace::BME_init() {
@@ -344,7 +362,7 @@ bool Aerospace::BME_init() {
     while ((rStatus & (1 << 0)) != 0)
           delay(100);
 
-    BME_set_();
+    BME_setSampling();
     delay(100);
 
     return true;
@@ -512,7 +530,7 @@ float Aerospace::DHT_readHumidity(bool force) {
 
 
 //Aerospace::dht_read
-boolean Aerospace::DHT_read(bool force) { 
+bool Aerospace::DHT_read(bool force) { 
   // Check if sensor was read less than two seconds ago and return early
   // to use last reading.
   uint32_t currenttime = millis();

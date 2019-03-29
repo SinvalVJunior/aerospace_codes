@@ -77,7 +77,6 @@ class Aerospace
 
   //--------------------------BME-------------------
 
-    
     bool BME_begin(void);
     bool BME_init();
 
@@ -87,6 +86,8 @@ class Aerospace
     float BME_getHumidity(void);
         
     float BME_getAltitude(float seaLevel);
+
+    void BME_setSampling();
 
 
   private:
@@ -163,13 +164,13 @@ class Aerospace
   int _tracked_satellites_index;
   uint8_t _sat_index;
 
-#ifndef _GPS_NO_STATS
+  #ifndef _GPS_NO_STATS
   // statistics
   unsigned long _encoded_characters;
   unsigned short _good_sentences;
   unsigned short _failed_checksum;
   unsigned short _passed_checksum;
-#endif
+  #endif
   int GPS_from_hex(char a);
   bool GPS_term_complete();
 
@@ -178,21 +179,48 @@ class Aerospace
         TwoWire *_wire;
         
         
-        uint8_t spixfer(uint8_t x);
+  uint8_t spixfer(uint8_t x);
 
-        void      BME_write8(byte reg, byte value);
-        uint8_t   BME_read8(byte reg);
-        uint16_t  BME_read16(byte reg);
-        uint32_t  BME_read24(byte reg);
-        int16_t   BME_readS16(byte reg);
-        uint16_t  BME_read16_LE(byte reg); // little endian
-        int16_t   BME_readS16_LE(byte reg); // little endian
+  void      BME_write8(byte reg, byte value);
+  uint8_t   BME_read8(byte reg);
+  uint16_t  BME_read16(byte reg);
+  uint32_t  BME_read24(byte reg);
+  int16_t   BME_readS16(byte reg);
+  uint16_t  BME_read16_LE(byte reg); // little endian
+  int16_t   BME_readS16_LE(byte reg); // little endian
 
-        uint8_t   _i2caddr;
+  uint8_t   _i2caddr;
 
-        int8_t _cs, _mosi, _miso, _sck;
+  int8_t _cs, _mosi, _miso, _sck;
 
-        //bme280_calib_data _bme280_calib;
+  struct config {
+  unsigned int t_sb : 3;
+  unsigned int filter : 3;
+  unsigned int none : 1;
+  unsigned int spi3w_en : 1;
+  unsigned int get() {
+    return (t_sb << 5) | (filter << 2) | spi3w_en;
+    }
+  };  config _configReg;
+
+  struct ctrl_meas {
+    unsigned int osrs_t : 3;
+    unsigned int osrs_p : 3;
+    unsigned int mode : 2;
+    unsigned int get() {
+      return (osrs_t << 5) | (osrs_p << 2) | mode;
+    }
+  };  ctrl_meas _measReg;
+
+  struct ctrl_hum {
+    unsigned int none : 5;
+    unsigned int osrs_h : 3;
+    unsigned int get() {
+      return (osrs_h);
+    }
+  };  ctrl_hum _humReg;
+
+  //bme280_calib_data _bme280_calib; (!?)
   
 };
 
