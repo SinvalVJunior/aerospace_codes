@@ -45,7 +45,10 @@ enum {
   BME280_REGISTER_CHIPID             = 0xD0,
   BME280_REGISTER_SOFTRESET          = 0xE0,
 
-  BME280_REGISTER_STATUS             = 0XF3
+  BME280_REGISTER_CONTROLHUMID       = 0xF2,
+  BME280_REGISTER_STATUS             = 0XF3,
+  BME280_REGISTER_CONTROL            = 0xF4,
+  BME280_REGISTER_CONFIG             = 0xF5
 };
 
 /**************************************************************************/
@@ -152,6 +155,43 @@ class Aerospace
   float BME_readAltitude(float seaLevel);
   float BME_seaLevelForAltitude(float altitude, float pressure);
 
+  //sampling rates
+  enum sensor_sampling {
+    SAMPLING_NONE = 0b000,
+    SAMPLING_X1   = 0b001,
+    SAMPLING_X2   = 0b010,
+    SAMPLING_X4   = 0b011,
+    SAMPLING_X8   = 0b100,
+    SAMPLING_X16  = 0b101
+  };
+
+  //power modes
+  enum sensor_mode {
+    MODE_SLEEP  = 0b00,
+    MODE_FORCED = 0b01,
+    MODE_NORMAL = 0b11
+  };
+
+  //Filter values
+  enum sensor_filter {
+    FILTER_OFF = 0b000,
+    FILTER_X2  = 0b001,
+    FILTER_X4  = 0b010,
+    FILTER_X8  = 0b011,
+    FILTER_X16 = 0b100
+  };
+
+  enum standby_duration {
+    STANDBY_MS_0_5  = 0b000,
+    STANDBY_MS_10   = 0b110,
+    STANDBY_MS_20   = 0b111,
+    STANDBY_MS_62_5 = 0b001,
+    STANDBY_MS_125  = 0b010,
+    STANDBY_MS_250  = 0b011,
+    STANDBY_MS_500  = 0b100,
+    STANDBY_MS_1000 = 0b101
+  };
+
   void BME_setSampling(sensor_mode mode              = MODE_NORMAL,
 		sensor_sampling tempSampling  = SAMPLING_X16,
 		sensor_sampling pressSampling = SAMPLING_X16,
@@ -159,6 +199,8 @@ class Aerospace
 		sensor_filter filter          = FILTER_OFF,
 		standby_duration duration     = STANDBY_MS_0_5
 		);
+
+
 
   private:
 //------------Acelerometro-------------
@@ -258,6 +300,89 @@ class Aerospace
   int8_t _cs, _sck, _mosi, _miso;
 
   bme280_calib_data _bme280_calib;
+
+  // The ctrl_meas register
+  struct ctrl_meas {
+    // temperature oversampling
+    // 000 = skipped
+    // 001 = x1
+    // 010 = x2
+    // 011 = x4
+    // 100 = x8
+    // 101 and above = x16
+    unsigned int osrs_t : 3;
+
+    // pressure oversampling
+    // 000 = skipped
+    // 001 = x1
+    // 010 = x2
+    // 011 = x4
+    // 100 = x8
+    // 101 and above = x16
+    unsigned int osrs_p : 3;
+
+    // device mode
+    // 00       = sleep
+    // 01 or 10 = forced
+    // 11       = normal
+    unsigned int mode : 2;
+
+    unsigned int get() {
+      return (osrs_t << 5) | (osrs_p << 2) | mode;
+    }
+  };
+  ctrl_meas _measReg;
+
+  // The ctrl_hum register
+  struct ctrl_hum {
+    // unused - don't set
+    unsigned int none : 5;
+
+    // pressure oversampling
+    // 000 = skipped
+    // 001 = x1
+    // 010 = x2
+    // 011 = x4
+    // 100 = x8
+    // 101 and above = x16
+    unsigned int osrs_h : 3;
+
+    unsigned int get() {
+      return (osrs_h);
+    }
+  };
+  ctrl_hum _humReg;
+
+  // The config register
+  struct config {
+    // inactive duration (standby time) in normal mode
+    // 000 = 0.5 ms
+    // 001 = 62.5 ms
+    // 010 = 125 ms
+    // 011 = 250 ms
+    // 100 = 500 ms
+    // 101 = 1000 ms
+    // 110 = 10 ms
+    // 111 = 20 ms
+    unsigned int t_sb : 3;
+
+    // filter settings
+    // 000 = filter off
+    // 001 = 2x filter
+    // 010 = 4x filter
+    // 011 = 8x filter
+    // 100 and above = 16x filter
+    unsigned int filter : 3;
+
+    // unused - don't set
+    unsigned int none : 1;
+    unsigned int spi3w_en : 1;
+
+    unsigned int get() {
+      return (t_sb << 5) | (filter << 2) | spi3w_en;
+    }
+  };
+  config _configReg;
 };
 
 
