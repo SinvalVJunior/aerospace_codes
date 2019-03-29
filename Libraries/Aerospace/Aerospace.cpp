@@ -720,3 +720,238 @@ float Aerospace::GPS_f_speed_knots()
 const float Aerospace::GPS_INVALID_F_ANGLE = 1000.0;
 const float Aerospace::GPS_INVALID_F_ALTITUDE = 1000000.0;
 const float Aerospace::GPS_INVALID_F_SPEED = -1.0;
+
+//---------------------Barometer---------------------
+
+/**************************************************************************/
+/*!
+    @brief  Initialise sensor with given parameters / settings
+    @returns true on success, false otherwise
+*/
+/**************************************************************************/
+bool Aerospace::BME_begin(void)
+{
+  _i2caddr = BME280_ADDRESS;
+	_wire = &Wire;
+	return BME_init();
+}
+
+/**************************************************************************/
+/*!
+    @brief  Initialise sensor with given parameters / settings
+    @returns true on success, false otherwise
+*/
+/**************************************************************************/
+bool Aerospace::BME_init()
+{
+    // init I2C or SPI sensor interface
+    if (_cs == -1) {
+        // I2C
+        _wire -> BME_begin();
+    } else {
+        digitalWrite(_cs, HIGH);
+        pinMode(_cs, OUTPUT);
+        if (_sck == -1) {
+            // hardware SPI
+            SPI.begin();
+        } else {
+            // software SPI
+            pinMode(_sck, OUTPUT);
+            pinMode(_mosi, OUTPUT);
+            pinMode(_miso, INPUT);
+        }
+    }
+
+    // check if sensor, i.e. the chip ID is correct
+    if (BME_read8(BME280_REGISTER_CHIPID) != 0x60)
+        return false;
+
+    // reset the device using soft-reset
+    // this makes sure the IIR is off, etc.
+    BME_write8(BME280_REGISTER_SOFTRESET, 0xB6);
+
+    // wait for chip to wake up.
+    delay(300);
+
+    // if chip is still reading calibration, delay
+    while (BME_isReadingCalibration())
+          delay(100);
+
+    BME_readCoefficients(); // read trimming parameters, see DS 4.2.2
+
+    //setSampling(); // use defaults
+
+    delay(100);
+
+    return true;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Reads an 8 bit value over I2C or SPI
+    @param reg the register address to read from
+    @returns the data byte read from the device
+*/
+/**************************************************************************/
+uint8_t Aerospace::BME_read8(byte reg) {
+    uint8_t value;
+    
+    if (_cs == -1) {
+        _wire -> beginTransmission((uint8_t)_i2caddr);
+        _wire -> write((uint8_t)reg);
+        _wire -> endTransmission();
+        _wire -> requestFrom((uint8_t)_i2caddr, (byte)1);
+        value = _wire -> read();
+    } else {
+        if (_sck == -1)
+            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        digitalWrite(_cs, LOW);
+        BME_spixfer(reg | 0x80); // read, bit 7 high
+        value = BME_spixfer(0);
+        digitalWrite(_cs, HIGH);
+        if (_sck == -1)
+            SPI.endTransaction(); // release the SPI bus
+    }
+    return value;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Writes an 8 bit value over I2C or SPI
+    @param reg the register address to write to
+    @param value the value to write to the register
+*/
+/**************************************************************************/
+void Aerospace::BME_write8(byte reg, byte value) {
+    if (_cs == -1) {
+        _wire -> beginTransmission((uint8_t)_i2caddr);
+        _wire -> write((uint8_t)reg);
+        _wire -> write((uint8_t)value);
+        _wire -> endTransmission();
+    } else {
+        if (_sck == -1)
+            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        digitalWrite(_cs, LOW);
+        BME_spixfer(reg & ~0x80); // write, bit 7 low
+        BME_spixfer(value);
+        digitalWrite(_cs, HIGH);
+    if (_sck == -1)
+        SPI.endTransaction(); // release the SPI bus
+    }
+}
+
+/**************************************************************************/
+/*!
+    @brief return true if chip is busy reading cal data
+    @returns true if reading calibration, false otherwise
+*/
+/**************************************************************************/
+bool Aerospace::BME_isReadingCalibration(void)
+{
+  uint8_t const rStatus = BME_read8(BME280_REGISTER_STATUS);
+
+  return (rStatus & (1 << 0)) != 0;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Reads the factory-set coefficients
+*/
+/**************************************************************************/
+void Aerospace::BME_readCoefficients(void)
+{
+    _bme280_calib.dig_T1 = BME_read16_LE(BME280_REGISTER_DIG_T1);
+    _bme280_calib.dig_T2 = BME_readS16_LE(BME280_REGISTER_DIG_T2);
+    _bme280_calib.dig_T3 = BME_readS16_LE(BME280_REGISTER_DIG_T3);
+
+    _bme280_calib.dig_P1 = BME_read16_LE(BME280_REGISTER_DIG_P1);
+    _bme280_calib.dig_P2 = BME_readS16_LE(BME280_REGISTER_DIG_P2);
+    _bme280_calib.dig_P3 = BME_readS16_LE(BME280_REGISTER_DIG_P3);
+    _bme280_calib.dig_P4 = BME_readS16_LE(BME280_REGISTER_DIG_P4);
+    _bme280_calib.dig_P5 = BME_readS16_LE(BME280_REGISTER_DIG_P5);
+    _bme280_calib.dig_P6 = BME_readS16_LE(BME280_REGISTER_DIG_P6);
+    _bme280_calib.dig_P7 = BME_readS16_LE(BME280_REGISTER_DIG_P7);
+    _bme280_calib.dig_P8 = BME_readS16_LE(BME280_REGISTER_DIG_P8);
+    _bme280_calib.dig_P9 = BME_readS16_LE(BME280_REGISTER_DIG_P9);
+
+    _bme280_calib.dig_H1 = BME_read8(BME280_REGISTER_DIG_H1);
+    _bme280_calib.dig_H2 = BME_readS16_LE(BME280_REGISTER_DIG_H2);
+    _bme280_calib.dig_H3 = BME_read8(BME280_REGISTER_DIG_H3);
+    _bme280_calib.dig_H4 = (BME_read8(BME280_REGISTER_DIG_H4) << 4) | (BME_read8(BME280_REGISTER_DIG_H4+1) & 0xF);
+    _bme280_calib.dig_H5 = (BME_read8(BME280_REGISTER_DIG_H5+1) << 4) | (BME_read8(BME280_REGISTER_DIG_H5) >> 4);
+    _bme280_calib.dig_H6 = (int8_t)BME_read8(BME280_REGISTER_DIG_H6);
+}
+
+/**************************************************************************/
+/*!
+    @brief  Encapsulate hardware and software SPI transfer into one function
+    @param x the data byte to transfer
+    @returns the data byte read from the device
+*/
+/**************************************************************************/
+uint8_t Aerospace::BME_spixfer(uint8_t x) {
+    // hardware SPI
+    if (_sck == -1)
+        return SPI.transfer(x);
+
+    // software SPI
+    uint8_t reply = 0;
+    for (int i=7; i>=0; i--) {
+        reply <<= 1;
+        digitalWrite(_sck, LOW);
+        digitalWrite(_mosi, x & (1<<i));
+        digitalWrite(_sck, HIGH);
+        if (digitalRead(_miso))
+            reply |= 1;
+        }
+    return reply;
+}
+
+/**************************************************************************/
+/*!
+    @brief  setup sensor with given parameters / settings
+    
+    This is simply a overload to the normal begin()-function, so SPI users
+    don't get confused about the library requiring an address.
+    @param mode the power mode to use for the sensor
+    @param tempSampling the temp samping rate to use
+    @param pressSampling the pressure sampling rate to use
+    @param humSampling the humidity sampling rate to use
+    @param filter the filter mode to use
+    @param duration the standby duration to use
+*/
+/**************************************************************************/
+void Aerospace::BME_setSampling(sensor_mode       mode,
+		 sensor_sampling   tempSampling,
+		 sensor_sampling   pressSampling,
+		 sensor_sampling   humSampling,
+		 sensor_filter     filter,
+		 standby_duration  duration) {
+    _measReg.mode     = mode;
+    _measReg.osrs_t   = tempSampling;
+    _measReg.osrs_p   = pressSampling;
+        
+    
+    _humReg.osrs_h    = humSampling;
+    _configReg.filter = filter;
+    _configReg.t_sb   = duration;
+
+    
+    // you must make sure to also set REGISTER_CONTROL after setting the
+    // CONTROLHUMID register, otherwise the values won't be applied (see DS 5.4.3)
+    write8(BME280_REGISTER_CONTROLHUMID, _humReg.get());
+    write8(BME280_REGISTER_CONFIG, _configReg.get());
+    write8(BME280_REGISTER_CONTROL, _measReg.get());
+}
+
+/**************************************************************************/
+/*!
+    @brief  Reads a signed 16 bit little endian value over I2C or SPI
+    @param reg the register address to read from
+    @returns the 16 bit data value read from the device
+*/
+/**************************************************************************/
+uint16_t Aerospace::BME_read16_LE(byte reg) {
+  uint16_t temp = read16(reg);
+  return (temp >> 8) | (temp << 8);
+}

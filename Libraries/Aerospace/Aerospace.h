@@ -10,6 +10,73 @@
 #include <pins_arduino.h>
 #endif
 
+//------------------Barometer------------
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+#include <SPI.h>
+
+/**************************************************************************/
+/*! 
+    @brief Register addresses
+*/
+/**************************************************************************/
+enum {
+  BME280_REGISTER_DIG_T1              = 0x88,
+  BME280_REGISTER_DIG_T2              = 0x8A,
+  BME280_REGISTER_DIG_T3              = 0x8C,
+
+  BME280_REGISTER_DIG_P1              = 0x8E,
+  BME280_REGISTER_DIG_P2              = 0x90,
+  BME280_REGISTER_DIG_P3              = 0x92,
+  BME280_REGISTER_DIG_P4              = 0x94,
+  BME280_REGISTER_DIG_P5              = 0x96,
+  BME280_REGISTER_DIG_P6              = 0x98,
+  BME280_REGISTER_DIG_P7              = 0x9A,
+  BME280_REGISTER_DIG_P8              = 0x9C,
+  BME280_REGISTER_DIG_P9              = 0x9E,
+
+  BME280_REGISTER_DIG_H1              = 0xA1,
+  BME280_REGISTER_DIG_H2              = 0xE1,
+  BME280_REGISTER_DIG_H3              = 0xE3,
+  BME280_REGISTER_DIG_H4              = 0xE4,
+  BME280_REGISTER_DIG_H5              = 0xE5,
+  BME280_REGISTER_DIG_H6              = 0xE7,
+
+  BME280_REGISTER_CHIPID             = 0xD0,
+  BME280_REGISTER_SOFTRESET          = 0xE0,
+
+  BME280_REGISTER_STATUS             = 0XF3
+};
+
+/**************************************************************************/
+/*! 
+    @brief  calibration data
+*/
+/**************************************************************************/
+typedef struct
+{
+  uint16_t dig_T1; ///< temperature compensation value
+  int16_t  dig_T2; ///< temperature compensation value
+  int16_t  dig_T3; ///< temperature compensation value
+
+  uint16_t dig_P1; ///< pressure compensation value
+  int16_t  dig_P2; ///< pressure compensation value
+  int16_t  dig_P3; ///< pressure compensation value
+  int16_t  dig_P4; ///< pressure compensation value
+  int16_t  dig_P5; ///< pressure compensation value
+  int16_t  dig_P6; ///< pressure compensation value
+  int16_t  dig_P7; ///< pressure compensation value
+  int16_t  dig_P8; ///< pressure compensation value
+  int16_t  dig_P9; ///< pressure compensation value
+
+  uint8_t  dig_H1; ///< humidity compensation value
+  int16_t  dig_H2; ///< humidity compensation value
+  uint8_t  dig_H3; ///< humidity compensation value
+  int16_t  dig_H4; ///< humidity compensation value
+  int16_t  dig_H5; ///< humidity compensation value
+  int8_t   dig_H6; ///< humidity compensation value
+} bme280_calib_data;
+
 //DHT
 #define DEBUG_PRINTER Serial
 
@@ -74,6 +141,25 @@ class Aerospace
   float GPS_f_speed_kmph();
   float GPS_f_speed_knots();
   float GPS_f_speed_mps();
+
+  //-----------------Barometer--------------------
+  bool BME_begin(void);
+  bool BME_init();
+  float BME_readTemperature(void);
+  float BME_readPressure(void);
+  float BME_readHumidity(void);
+        
+  float BME_readAltitude(float seaLevel);
+  float BME_seaLevelForAltitude(float altitude, float pressure);
+
+  void BME_setSampling(sensor_mode mode              = MODE_NORMAL,
+		sensor_sampling tempSampling  = SAMPLING_X16,
+		sensor_sampling pressSampling = SAMPLING_X16,
+		sensor_sampling humSampling   = SAMPLING_X16,
+		sensor_filter filter          = FILTER_OFF,
+		standby_duration duration     = STANDBY_MS_0_5
+		);
+
   private:
 //------------Acelerometro-------------
     int _sleepPin;
@@ -157,7 +243,21 @@ class Aerospace
 #endif
   int GPS_from_hex(char a);
   bool GPS_term_complete();
-  
+
+  //------------------Barometer-----------------
+  void BME_readCoefficients(void);
+  bool BME_isReadingCalibration(void);
+  uint8_t BME_spixfer(uint8_t x);
+
+  void      BME_write8(byte reg, byte value);
+  uint8_t   BME_read8(byte reg);
+  uint16_t  BME_read16_LE(byte reg); // little endian
+
+  uint8_t   _i2caddr;
+  TwoWire *_wire;
+  int8_t _cs, _sck, _mosi, _miso;
+
+  bme280_calib_data _bme280_calib;
 };
 
 
