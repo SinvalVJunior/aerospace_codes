@@ -176,7 +176,7 @@ class Aerospace
 
 
   //--------------------------BME-------------------
-        TwoWire *_wire;
+  TwoWire *_wire;
         
         
   uint8_t spixfer(uint8_t x);
@@ -189,7 +189,7 @@ class Aerospace
   uint16_t  BME_read16_LE(byte reg); // little endian
   int16_t   BME_readS16_LE(byte reg); // little endian
 
-  uint8_t   _i2caddr;
+  uint8_t   _i2caddr, t_fine;
 
   int8_t _cs, _mosi, _miso, _sck;
 
@@ -218,10 +218,7 @@ class Aerospace
     unsigned int get() {
       return (osrs_h);
     }
-  };  ctrl_hum _humReg;
-
-  //bme280_calib_data _bme280_calib; (!?)
-  
+  };  ctrl_hum _humReg;  
 };
 
 

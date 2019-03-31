@@ -29,11 +29,11 @@ Aerospace::Aerospace()
   ,  _term_number(0)
   ,  _term_offset(0)
   ,  _gps_data_good(false)
-#ifndef _GPS_NO_STATS
+  #ifndef _GPS_NO_STATS
   ,  _encoded_characters(0)
   ,  _good_sentences(0)
   ,  _failed_checksum(0)
-#endif
+  #endif
 {
 
   //Acelerometro
@@ -85,7 +85,6 @@ void Aerospace::accelero_begin()
   analogReference(EXTERNAL);
   digitalWrite(_gSelectPin,!_sensi);
 }
-
 
 void Aerospace::accelero_setOffSets(int xOffSet, int yOffSet, int zOffSet)
 {  
@@ -213,7 +212,7 @@ void Aerospace::accelero_calibrate()
 //--------------------BME280--------------------//
 
 float Aerospace::BME_getTemperature() {
-    int32_t var1, var2, t_fine;
+    int32_t var1, var2;
 
     uint16_t dig_T1 = BME_read16_LE(0x88);
     int16_t dig_T2 = BME_readS16_LE(0x8A);
@@ -231,16 +230,16 @@ float Aerospace::BME_getTemperature() {
               ((adc_T>>4) - ((int32_t)dig_T1))) >> 12) *
             ((int32_t)dig_T3)) >> 14;
 
-    int32_t t_fine = var1 + var2;
+    t_fine = var1 + var2;
 
     float T = (t_fine * 5 + 128) >> 8;
     return T/100;
 }
 
 float Aerospace::BME_getPressure() {
-    int64_t var1, var2, t_fine, p;
+    int64_t var1, var2, p;
 
-    t_fine = (int64_t)BME_getTemperature(); // must be done first to get t_fine
+    BME_getTemperature(); // must be done first to get t_fine
 
     uint16_t dig_P1 = BME_read16_LE(0x8E);
     int16_t dig_P2 = BME_readS16_LE(0x90);
