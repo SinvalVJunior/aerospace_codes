@@ -3,12 +3,16 @@
 #ifndef Aerospace_h
 #define Aerospace_h
 
+
 #if defined(ARDUINO) && ARDUINO >= 100
 #include <Arduino.h>
 #else
 #include <WProgram.h>
 #include <pins_arduino.h>
 #endif
+
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
 
 //DHT
 #define DEBUG_PRINTER Serial
@@ -179,7 +183,7 @@ class Aerospace
   TwoWire *_wire;
         
         
-  uint8_t spixfer(uint8_t x);
+  uint8_t BME_spixfer(uint8_t x);
 
   void      BME_write8(byte reg, byte value);
   uint8_t   BME_read8(byte reg);

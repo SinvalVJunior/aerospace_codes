@@ -1,4 +1,8 @@
 #include "Aerospace.h"
+
+#include "Arduino.h"
+#include <Wire.h>
+#include <SPI.h>
 //------------------------GPS------------------
 #define COMBINE(sentence_type, term_number) (((unsigned)(sentence_type) << 5) | term_number)
 #define _GPRMC_TERM   "GPRMC"
@@ -210,6 +214,23 @@ void Aerospace::accelero_calibrate()
 }
 
 //--------------------BME280--------------------//
+uint8_t Aerospace::BME_spixfer(uint8_t x) {
+    // hardware SPI
+    if (_sck == -1)
+        return SPI.transfer(x);
+
+    // software SPI
+    uint8_t reply = 0;
+    for (int i=7; i>=0; i--) {
+        reply <<= 1;
+        digitalWrite(_sck, LOW);
+        digitalWrite(_mosi, x & (1<<i));
+        digitalWrite(_sck, HIGH);
+        if (digitalRead(_miso))
+            reply |= 1;
+        }
+    return reply;
+}
 
 float Aerospace::BME_getTemperature() {
     int32_t var1, var2;
@@ -248,7 +269,7 @@ float Aerospace::BME_getPressure() {
     int16_t dig_P5 = BME_readS16_LE(0x96);
     int16_t dig_P6 = BME_readS16_LE(0x98);
     int16_t dig_P7 = BME_readS16_LE(0x9A);
-    int16_t dig_P9 = BME_readS16_LE(0x9C); 
+    int16_t dig_P8 = BME_readS16_LE(0x9C); 
     int16_t dig_P9 = BME_readS16_LE(0x9E);
 
 
@@ -275,6 +296,13 @@ float Aerospace::BME_getPressure() {
 
     p = ((p + var1 + var2) >> 8) + (((int64_t)dig_P7)<<4);
     return (float)p/256;
+}
+
+float Aerospace::BME_getAltitude(float seaLevel)
+{
+
+    float atmospheric = BME_getPressure() / 100.0F;
+    return 44330.0 * (1.0 - pow(atmospheric / seaLevel, 0.1903));
 }
 
 float Aerospace::BME_getHumidity() {
@@ -314,7 +342,7 @@ float Aerospace::BME_getHumidity() {
 bool Aerospace::BME_begin() {
     _i2caddr = 0x77;
     TwoWire * _wire = &Wire;
-    return init();
+    return BME_init();
 }
 
 void Aerospace::BME_setSampling() {
@@ -331,14 +359,33 @@ void Aerospace::BME_setSampling() {
     
     // you must make sure to also set REGISTER_CONTROL after setting the
     // CONTROLHUMID register, otherwise the values won't be applied (see DS 5.4.3)
-    write8(0xF2, _humReg.get());
-    write8(0xF2, _configReg.get());
-    write8(0xF4, _measReg.get());
+    BME_write8(0xF2, _humReg.get());
+    BME_write8(0xF2, _configReg.get());
+    BME_write8(0xF4, _measReg.get());
+}
+
+void Aerospace::BME_write8(byte reg, byte value) {
+
+    if (_cs == -1) {
+        _wire -> beginTransmission((uint8_t)_i2caddr);
+        _wire -> write((uint8_t)reg);
+        _wire -> write((uint8_t)value);
+        _wire -> endTransmission();
+    } else {
+        if (_sck == -1)
+            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        digitalWrite(_cs, LOW);
+        BME_spixfer(reg & ~0x80); // write, bit 7 low
+        BME_spixfer(value);
+        digitalWrite(_cs, HIGH);
+    if (_sck == -1)
+        SPI.endTransaction(); // release the SPI bus
+    }
 }
 
 bool Aerospace::BME_init() {
     if (_cs == -1) 
-        _wire -> BME_begin();
+        _wire -> begin();
     else {
         digitalWrite(_cs, HIGH);
         pinMode(_cs, OUTPUT);
@@ -374,24 +421,6 @@ uint16_t Aerospace::BME_read16_LE(byte reg) {
 
 int16_t Aerospace::BME_readS16_LE(byte reg) {
     return (int16_t)BME_read16_LE(reg);
-}
-
-uint8_t Aerospace::BME_spixfer(uint8_t x) {
-    // hardware SPI
-    if (_sck == -1)
-        return SPI.transfer(x);
-
-    // software SPI
-    uint8_t reply = 0;
-    for (int i=7; i>=0; i--) {
-        reply <<= 1;
-        digitalWrite(_sck, LOW);
-        digitalWrite(_mosi, x & (1<<i));
-        digitalWrite(_sck, HIGH);
-        if (digitalRead(_miso))
-            reply |= 1;
-        }
-    return reply;
 }
 
 uint32_t Aerospace::BME_read24(byte reg) {
@@ -472,26 +501,6 @@ uint16_t Aerospace::BME_read16(byte reg) {
 
     return value;
 }
-
-void Aerospace::BME_write8(byte reg, byte value) {
-
-    if (_cs == -1) {
-        _wire -> beginTransmission((uint8_t)_i2caddr);
-        _wire -> write((uint8_t)reg);
-        _wire -> write((uint8_t)value);
-        _wire -> endTransmission();
-    } else {
-        if (_sck == -1)
-            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
-        digitalWrite(_cs, LOW);
-        BME_spixfer(reg & ~0x80); // write, bit 7 low
-        BME_spixfer(value);
-        digitalWrite(_cs, HIGH);
-    if (_sck == -1)
-        SPI.endTransaction(); // release the SPI bus
-    }
-}
-
 
 //---------------------------------------------//
 

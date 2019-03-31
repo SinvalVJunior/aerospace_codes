@@ -1,5 +1,8 @@
-//DHT+SD+Acelerometro
 #include <SD.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_Sensor.h>
+
 #include <Aerospace.h>
 #include "TimerOne.h"
 
@@ -84,6 +87,7 @@ void loop() {
     Serial.print("\n");
 
     /*----------------------BME--------------------------*/
+    bool status;
     status = aerospace.BME_begin();  
     if (!status) {
         Serial.println("Could not find a valid BME280 sensor, check wiring!");
@@ -91,7 +95,7 @@ void loop() {
     }
 
     Serial.print("Temperature = ");
-    Serial.print(aerospace.BME_Temperature());
+    Serial.print(aerospace.BME_getTemperature());
     Serial.println(" *C");
 
     Serial.print("Pressure = ");
@@ -100,6 +104,7 @@ void loop() {
 
     Serial.print("Approx. Altitude = ");
     Serial.print(aerospace.BME_getAltitude(1013.25));
+    
     Serial.println(" m");
 
     Serial.print("Humidity = ");
