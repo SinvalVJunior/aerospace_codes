@@ -48,7 +48,10 @@ enum {
   BME280_REGISTER_CONTROLHUMID       = 0xF2,
   BME280_REGISTER_STATUS             = 0XF3,
   BME280_REGISTER_CONTROL            = 0xF4,
-  BME280_REGISTER_CONFIG             = 0xF5
+  BME280_REGISTER_CONFIG             = 0xF5,
+  BME280_REGISTER_PRESSUREDATA       = 0xF7,
+  BME280_REGISTER_TEMPDATA           = 0xFA,
+  BME280_REGISTER_HUMIDDATA          = 0xFD
 };
 
 /**************************************************************************/
@@ -293,6 +296,8 @@ class Aerospace
 
   void      BME_write8(byte reg, byte value);
   uint8_t   BME_read8(byte reg);
+  uint16_t  BME_read16(byte reg);
+  uint32_t  BME_read24(byte reg);
   uint16_t  BME_read16_LE(byte reg); // little endian
 
   uint8_t   _i2caddr;

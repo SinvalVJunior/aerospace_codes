@@ -952,6 +952,217 @@ void Aerospace::BME_setSampling(sensor_mode       mode,
 */
 /**************************************************************************/
 uint16_t Aerospace::BME_read16_LE(byte reg) {
-  uint16_t temp = read16(reg);
+  uint16_t temp = BME_read16(reg);
   return (temp >> 8) | (temp << 8);
 }
+
+/**************************************************************************/
+/*!
+    @brief  Reads a 16 bit value over I2C or SPI
+    @param reg the register address to read from
+    @returns the 16 bit data value read from the device
+*/
+/**************************************************************************/
+uint16_t Aerospace::BME_read16(byte reg)
+{
+    uint16_t value;
+
+    if (_cs == -1) {
+        _wire -> beginTransmission((uint8_t)_i2caddr);
+        _wire -> write((uint8_t)reg);
+        _wire -> endTransmission();
+        _wire -> requestFrom((uint8_t)_i2caddr, (byte)2);
+        value = (_wire -> read() << 8) | _wire -> read();
+    } else {
+        if (_sck == -1)
+            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        digitalWrite(_cs, LOW);
+        BME_spixfer(reg | 0x80); // read, bit 7 high
+        value = (BME_spixfer(0) << 8) | BME_spixfer(0);
+        digitalWrite(_cs, HIGH);
+        if (_sck == -1)
+            SPI.endTransaction(); // release the SPI bus
+    }
+
+    return value;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Returns the temperature from the sensor
+    @returns the temperature read from the device
+*/
+/**************************************************************************/
+float Aerospace::BME_readTemperature(void)
+{
+    int32_t var1, var2;
+
+    int32_t adc_T = BME_read24(BME280_REGISTER_TEMPDATA);
+    if (adc_T == 0x800000) // value in case temp measurement was disabled
+        return NAN;
+    adc_T >>= 4;
+
+    var1 = ((((adc_T>>3) - ((int32_t)_bme280_calib.dig_T1 <<1))) *
+            ((int32_t)_bme280_calib.dig_T2)) >> 11;
+             
+    var2 = (((((adc_T>>4) - ((int32_t)_bme280_calib.dig_T1)) *
+              ((adc_T>>4) - ((int32_t)_bme280_calib.dig_T1))) >> 12) *
+            ((int32_t)_bme280_calib.dig_T3)) >> 14;
+
+    t_fine = var1 + var2;
+
+    float T = (t_fine * 5 + 128) >> 8;
+    return T/100;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Reads a 24 bit value over I2C
+    @param reg the register address to read from
+    @returns the 24 bit data value read from the device
+*/
+/**************************************************************************/
+uint32_t Aerospace::BME_read24(byte reg)
+{
+    uint32_t value;
+
+    if (_cs == -1) {
+        _wire -> beginTransmission((uint8_t)_i2caddr);
+        _wire -> write((uint8_t)reg);
+        _wire -> endTransmission();
+        _wire -> requestFrom((uint8_t)_i2caddr, (byte)3);
+
+        value = _wire -> read();
+        value <<= 8;
+        value |= _wire -> read();
+        value <<= 8;
+        value |= _wire -> read();
+    } else {
+        if (_sck == -1)
+            SPI.beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
+        digitalWrite(_cs, LOW);
+        BME_spixfer(reg | 0x80); // read, bit 7 high
+
+        value = BME_spixfer(0);
+        value <<= 8;
+        value |= BME_spixfer(0);
+        value <<= 8;
+        value |= BME_spixfer(0);
+
+        digitalWrite(_cs, HIGH);
+        if (_sck == -1)
+            SPI.endTransaction(); // release the SPI bus
+    }
+
+    return value;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Returns the pressure from the sensor
+    @returns the pressure value (in Pascal) read from the device
+*/
+/**************************************************************************/
+float Aerospace::BME_readPressure(void) {
+    int64_t var1, var2, p;
+
+    BME_readTemperature(); // must be done first to get t_fine
+
+    int32_t adc_P = BME_read24(BME280_REGISTER_PRESSUREDATA);
+    if (adc_P == 0x800000) // value in case pressure measurement was disabled
+        return NAN;
+    adc_P >>= 4;
+
+    var1 = ((int64_t)t_fine) - 128000;
+    var2 = var1 * var1 * (int64_t)_bme280_calib.dig_P6;
+    var2 = var2 + ((var1*(int64_t)_bme280_calib.dig_P5)<<17);
+    var2 = var2 + (((int64_t)_bme280_calib.dig_P4)<<35);
+    var1 = ((var1 * var1 * (int64_t)_bme280_calib.dig_P3)>>8) +
+           ((var1 * (int64_t)_bme280_calib.dig_P2)<<12);
+    var1 = (((((int64_t)1)<<47)+var1))*((int64_t)_bme280_calib.dig_P1)>>33;
+
+    if (var1 == 0) {
+        return 0; // avoid exception caused by division by zero
+    }
+    p = 1048576 - adc_P;
+    p = (((p<<31) - var2)*3125) / var1;
+    var1 = (((int64_t)_bme280_calib.dig_P9) * (p>>13) * (p>>13)) >> 25;
+    var2 = (((int64_t)_bme280_calib.dig_P8) * p) >> 19;
+
+    p = ((p + var1 + var2) >> 8) + (((int64_t)_bme280_calib.dig_P7)<<4);
+    return (float)p/256;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Returns the humidity from the sensor
+    @returns the humidity value read from the device
+*/
+/**************************************************************************/
+float Aerospace::BME_readHumidity(void) {
+    BME_readTemperature(); // must be done first to get t_fine
+
+    int32_t adc_H = BME_read16(BME280_REGISTER_HUMIDDATA);
+    if (adc_H == 0x8000) // value in case humidity measurement was disabled
+        return NAN;
+        
+    int32_t v_x1_u32r;
+
+    v_x1_u32r = (t_fine - ((int32_t)76800));
+
+    v_x1_u32r = (((((adc_H << 14) - (((int32_t)_bme280_calib.dig_H4) << 20) -
+                    (((int32_t)_bme280_calib.dig_H5) * v_x1_u32r)) + ((int32_t)16384)) >> 15) *
+                 (((((((v_x1_u32r * ((int32_t)_bme280_calib.dig_H6)) >> 10) *
+                      (((v_x1_u32r * ((int32_t)_bme280_calib.dig_H3)) >> 11) + ((int32_t)32768))) >> 10) +
+                    ((int32_t)2097152)) * ((int32_t)_bme280_calib.dig_H2) + 8192) >> 14));
+
+    v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
+                               ((int32_t)_bme280_calib.dig_H1)) >> 4));
+
+    v_x1_u32r = (v_x1_u32r < 0) ? 0 : v_x1_u32r;
+    v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
+    float h = (v_x1_u32r>>12);
+    return  h / 1024.0;
+}
+
+/**************************************************************************/
+/*!
+    Calculates the altitude (in meters) from the specified atmospheric
+    pressure (in hPa), and sea-level pressure (in hPa).
+
+    @param  seaLevel      Sea-level pressure in hPa
+    @returns the altitude value read from the device
+*/
+/**************************************************************************/
+float Aerospace::BME_readAltitude(float seaLevel)
+{
+    // Equation taken from BMP180 datasheet (page 16):
+    //  http://www.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf
+
+    // Note that using the equation from wikipedia can give bad results
+    // at high altitude. See this thread for more information:
+    //  http://forums.adafruit.com/viewtopic.php?f=22&t=58064
+
+    float atmospheric = BME_readPressure() / 100.0F;
+    return 44330.0 * (1.0 - pow(atmospheric / seaLevel, 0.1903));
+}
+
+/**************************************************************************/
+/*!
+    Calculates the pressure at sea level (in hPa) from the specified altitude 
+    (in meters), and atmospheric pressure (in hPa).  
+    @param  altitude      Altitude in meters
+    @param  atmospheric   Atmospheric pressure in hPa
+    @returns the pressure at sea level (in hPa) from the specified altitude
+*/
+/**************************************************************************/
+float Aerospace::BME_seaLevelForAltitude(float altitude, float atmospheric)
+{
+    // Equation taken from BMP180 datasheet (page 17):
+    //  http://www.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf
+
+    // Note that using the equation from wikipedia can give bad results
+    // at high altitude. See this thread for more information:
+    //  http://forums.adafruit.com/viewtopic.php?f=22&t=58064
+
+    return atmospheric / pow(1.0 - (altitude/44330.0), 5.255);
