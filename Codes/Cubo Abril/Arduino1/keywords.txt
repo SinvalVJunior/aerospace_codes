@@ -1,0 +1,9 @@
+Aerospace KEYWORD1
+accelero_getXAccel	KEYWORD2
+accelero_getYAccel	KEYWORD2
+accelero_getZAccel	KEYWORD2
+accelero_begin	KEYWORD2
+accelero_setOffSet KEYWORD2
+accelero_calibrate	KEYWORD2
+accelero_getOrientation	KEYWORD2
+accelero_setOffSets	KEYWORD2
