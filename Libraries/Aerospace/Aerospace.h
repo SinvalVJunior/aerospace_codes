@@ -17,6 +17,13 @@
 
 /**************************************************************************/
 /*! 
+    @brief  default I2C address
+*/
+/**************************************************************************/
+ #define BME280_ADDRESS                (0x77)
+
+/**************************************************************************/
+/*! 
     @brief Register addresses
 */
 /**************************************************************************/
@@ -150,7 +157,11 @@ class Aerospace
 
   //-----------------Barometer--------------------
   bool BME_begin(void);
+  bool BME_begin(TwoWire *theWire);
+  bool BME_begin(uint8_t addr);
+  bool BME_begin(uint8_t addr, TwoWire *theWire);
   bool BME_init();
+
   float BME_readTemperature(void);
   float BME_readPressure(void);
   float BME_readHumidity(void);
@@ -299,9 +310,11 @@ class Aerospace
   uint16_t  BME_read16(byte reg);
   uint32_t  BME_read24(byte reg);
   uint16_t  BME_read16_LE(byte reg); // little endian
+  int16_t   BME_readS16_LE(byte reg); // little endian
 
   uint8_t   _i2caddr;
   TwoWire *_wire;
+  int32_t   t_fine;
   int8_t _cs, _sck, _mosi, _miso;
 
   bme280_calib_data _bme280_calib;
