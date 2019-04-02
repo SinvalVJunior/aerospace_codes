@@ -722,6 +722,48 @@ const float Aerospace::GPS_INVALID_F_ALTITUDE = 1000000.0;
 const float Aerospace::GPS_INVALID_F_SPEED = -1.0;
 
 //---------------------Barometer---------------------
+/**************************************************************************/
+/*!
+    @brief  Initialise sensor with given parameters / settings
+    @param theWire the I2C object to use
+    @returns true on success, false otherwise
+*/
+/**************************************************************************/
+bool Aerospace::BME_begin(TwoWire *theWire)
+{
+  _wire = theWire;
+  _i2caddr = BME280_ADDRESS;
+  return BME_init();
+}
+
+/**************************************************************************/
+/*!
+    @brief  Initialise sensor with given parameters / settings
+    @param addr the I2C address the device can be found on
+    @returns true on success, false otherwise
+*/
+/**************************************************************************/
+bool Aerospace::BME_begin(uint8_t addr)
+{
+  _i2caddr = addr;
+  _wire = &Wire;
+  return BME_init();
+}
+
+/**************************************************************************/
+/*!
+    @brief  Initialise sensor with given parameters / settings
+    @param addr the I2C address the device can be found on
+    @param theWire the I2C object to use
+    @returns true on success, false otherwise
+*/
+/**************************************************************************/
+bool Aerospace::BME_begin(uint8_t addr, TwoWire *theWire)
+{
+  _i2caddr = addr;
+  _wire = theWire;
+  return BME_init();
+}
 
 /**************************************************************************/
 /*!
@@ -747,7 +789,7 @@ bool Aerospace::BME_init()
     // init I2C or SPI sensor interface
     if (_cs == -1) {
         // I2C
-        _wire -> BME_begin();
+        _wire -> begin();
     } else {
         digitalWrite(_cs, HIGH);
         pinMode(_cs, OUTPUT);
@@ -954,6 +996,18 @@ void Aerospace::BME_setSampling(sensor_mode       mode,
 uint16_t Aerospace::BME_read16_LE(byte reg) {
   uint16_t temp = BME_read16(reg);
   return (temp >> 8) | (temp << 8);
+}
+
+/**************************************************************************/
+/*!
+    @brief  Reads a signed little endian 16 bit value over I2C or SPI
+    @param reg the register address to read from
+    @returns the 16 bit data value read from the device
+*/
+/**************************************************************************/
+int16_t Aerospace::BME_readS16_LE(byte reg)
+{
+    return (int16_t)BME_read16_LE(reg);
 }
 
 /**************************************************************************/
@@ -1166,3 +1220,4 @@ float Aerospace::BME_seaLevelForAltitude(float altitude, float atmospheric)
     //  http://forums.adafruit.com/viewtopic.php?f=22&t=58064
 
     return atmospheric / pow(1.0 - (altitude/44330.0), 5.255);
+}
