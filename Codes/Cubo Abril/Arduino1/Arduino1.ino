@@ -128,10 +128,9 @@ void loop() {
                           "\n Idade da mensagem:"+idadeInfo+
                           "\n Altitude:"+altitudeGPS/1000+
                           "\n Velocidade:"+velocidade+
-                          "\n Barometro:"
-                          "\n Pressao:"+pressao+
+                          "\n Barometro:\n Pressao:"+pressao+
                           "\n Temperatura:"+temperatura+
-                          "\n Humidade:"+humidade;
+                          "\n Umidade:"+humidade;
                           delay(1000);
 
                           
@@ -151,3 +150,4 @@ void enviaSMS() {
   serialGSM.print(msg + "\n");
   serialGSM.print((char)26); 
 }
+
