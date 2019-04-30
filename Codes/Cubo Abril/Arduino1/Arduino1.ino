@@ -9,16 +9,32 @@ String telefoneSMS = "992999511" ;//Definir o numero
 SoftwareSerial serialGPS(10, 11); // TX, RX do modulo
 SoftwareSerial serialGSM(3, 2); // RX, TX
 Aerospace aerospace;
-
+//-----------------------------------Barômetro---------------------------------
+#define PRESSAONIVELDOMAR_HPA (1013.25)
+unsigned long delayTime;
 
 void configuraGSM();
 void enviaSMS();
 
 void setup() {
     Serial.begin(9600);
+    //---------------------------------Barômetro------------------------------
+    //Serial.println(F("Testando barometro..."));
+
+    bool BME_status;
+
+    //Verifica o sensor de barômetro
+    BME_status = aerospace.BME_begin();
+    if (!BME_status) {
+      //Serial.println("Sensor de barômetro não encontrado, verifique a fiação!");
+    }
+
+    delayTime = 1000;
+   // Serial.println();
     //------------------GPRS-----------------------------
     serialGSM.begin(9600); 
     Serial.println("Sketch Iniciado!");
+    serialGSM.listen();
     configuraGSM(); //funcao para receber sms
     /*----------------------------------GPS----------------------------------*/
     serialGPS.begin(19200);
@@ -34,12 +50,9 @@ void setup() {
 
 void loop() {
   bool recebido = false;
-  if(!serialGPS.available())
-          serialGPS.listen();
-  
-  else {
-     char cIn = serialGPS.read();
-     recebido = aerospace.GPS_encode(cIn);
+  serialGPS.listen();
+  char cIn = serialGPS.read();
+  recebido = aerospace.GPS_encode(cIn);
      
  if (recebido) {
      Serial.println("----------------------------------------");
@@ -100,6 +113,11 @@ void loop() {
      }
   */
 
+  //------------------ Barometro--------------------------
+  float pressao=aerospace.BME_readPressure() / 100.0F;
+  float temperatura=aerospace.BME_readTemperature();
+  float altitudeBar=aerospace.BME_readAltitude(PRESSAONIVELDOMAR_HPA);
+  float humidade=aerospace.BME_readHumidity();
      //velocidade
      float velocidade;
      velocidade = aerospace.GPS_f_speed_kmph();   //km/h
@@ -109,28 +127,27 @@ void loop() {
      msg=msg+"\n Longitude:"+longitude+//mudar para 6 caracteres depois da virgula
                           "\n Idade da mensagem:"+idadeInfo+
                           "\n Altitude:"+altitudeGPS/1000+
-                          "\n Velocidade:"+velocidade;
+                          "\n Velocidade:"+velocidade+
+                          "\n Barometro:"
+                          "\n Pressao:"+pressao+
+                          "\n Temperatura:"+temperatura+
+                          "\n Humidade:"+humidade;
                           delay(1000);
 
                           
-  Serial.print(msg);
-  msg = "";
+     serialGSM.listen();
      if(serialGSM.available()) enviaSMS();                      
              delay(5000);             
     }
-  }
+  
   
 }
 
 void configuraGSM() {
    serialGSM.print("AT+CMGF=1\n;AT+CNMI=2,2,0,0,0\n;ATX4\n;AT+COLP=1\n"); 
-   
-  Serial.print(serialGSM.read());
-  //serialGSM.print("AT"); 
 }
 void enviaSMS() {
   serialGSM.print("AT+CMGS=\"" + telefoneSMS + "\"\n");
   serialGSM.print(msg + "\n");
   serialGSM.print((char)26); 
-   if(serialGSM.available()) Serial.print(serialGSM.read());
 }
