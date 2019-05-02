@@ -181,9 +181,11 @@ void loop() {
                           "\n Velocidade:"+velocidade;
      
      serialGSM.listen();
-     enviaSMS(msg);
+
      if(millis()>= 60000*barreira) {
+      
       Serial.println(msg);
+      enviaSMS(msg);
       barreira++;
       }
   }
