@@ -19,7 +19,7 @@ Aerospace barometro;
 
 int lastTime;
 int barreira;
-String telefone ="01531994406018"; 
+String telefone ="01531998184049"; 
 
 bool callStatus = false;
 
