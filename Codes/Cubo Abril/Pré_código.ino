@@ -40,8 +40,8 @@ void setup() {
    serial1.begin(9600);
    Serial.println("Aguardando pelo sinal dos satelites...");
    
-   barreira=1;
-
+   barreira=0;
+   serial1.listen();
    
 }
 
@@ -50,7 +50,6 @@ void loop() {
   //--------------------GPS---------------------
   bool recebido = false;
   bool teste = false;
-  serial1.listen();
   
   while (serial1.available() && !teste) {
     //Serial.println("Entrou");
@@ -188,6 +187,7 @@ void loop() {
       enviaSMS(msg);
       barreira++;
       }
+      serial1.listen();
   }
  // delay(2000);
    }
